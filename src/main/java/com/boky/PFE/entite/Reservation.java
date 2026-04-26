@@ -30,9 +30,8 @@ public class Reservation
         LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd ");
         this.date = now.format(formatter);
-        this.etat=false;
-        this.confirmation=false;
-
+        this.etat = false;
+        this.confirmation = false;
     }
 
     public boolean isConfirmation() {
@@ -68,7 +67,7 @@ public class Reservation
     }
 
     @ManyToOne
-    Utilisateur utilisateur;
+    Client utilisateur;
     @ManyToOne
     Annonce annonce ;
 
@@ -114,11 +113,11 @@ public class Reservation
         this.id = id;
     }
 
-    public Utilisateur getUtilisateur() {
+    public Client getUtilisateur() {
         return utilisateur;
     }
 
-    public void setUtilisateur(Utilisateur utilisateur) {
+    public void setUtilisateur(Client utilisateur) {
         this.utilisateur = utilisateur;
     }
 
@@ -130,7 +129,7 @@ public class Reservation
         this.annonce = annonce;
     }
 
-    public Reservation(Long id, String date_arrivee, String date_depart, long nb_nuit, long nb_vacancier, long montant_paye, String date, Utilisateur utilisateur, Annonce annonce) {
+    public Reservation(Long id, String date_arrivee, String date_depart, long nb_nuit, long nb_vacancier, long montant_paye, String date, Client utilisateur, Annonce annonce) {
         this.id = id;
         this.date_arrivee = date_arrivee;
         this.date_depart = date_depart;
@@ -141,7 +140,7 @@ public class Reservation
         this.utilisateur = utilisateur;
         this.annonce = annonce;
     }
-    public Reservation( String date_arrivee, String date_depart, long nb_nuit, long nb_vacancier, long montant_paye, Utilisateur utilisateur, Annonce annonce) {
+    public Reservation( String date_arrivee, String date_depart, long nb_nuit, long nb_vacancier, long montant_paye, Client utilisateur, Annonce annonce) {
 
         this.date_arrivee = date_arrivee;
         this.date_depart = date_depart;
@@ -153,7 +152,7 @@ public class Reservation
         this.annonce = annonce;
     }
 
-    public Reservation( String date_arrivee, String date_depart, long nb_nuit, long nb_vacancier, long montant_paye,  boolean etat, boolean confirmation, Utilisateur utilisateur, Annonce annonce) {
+    public Reservation( String date_arrivee, String date_depart, long nb_nuit, long nb_vacancier, long montant_paye,  boolean etat, boolean confirmation, Client utilisateur, Annonce annonce) {
 
         this.date_arrivee = date_arrivee;
         this.date_depart = date_depart;

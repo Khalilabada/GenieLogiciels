@@ -1,16 +1,16 @@
 package com.boky.PFE.service;
 
-import com.boky.PFE.Beans.ReservationRQ;
 import com.boky.PFE.Beans.SaveEvaluation;
 import com.boky.PFE.entite.Annonce;
+import com.boky.PFE.entite.Annonceur;
 import com.boky.PFE.entite.Evaluation;
 import com.boky.PFE.entite.Reservation;
 import com.boky.PFE.entite.Utilisateur;
 import com.boky.PFE.repository.EvaluationRepositrory;
+import com.boky.PFE.repository.ReservationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -26,31 +26,49 @@ public class EvaluationServiceImpl implements EvaluationService
     UtilisateurService utilisateurService;
     @Autowired
     EmailService emailService;
+    @Autowired
+    ReservationRepository reservationRepository;
+    @Autowired
+    OclEvaluationValidator oclEvaluationValidator;
+
     @Override
     public Evaluation AjouterEvaluation(SaveEvaluation model){
         Evaluation evaluation = SaveEvaluation.toEntity(model);
-        Optional<Annonce> annonce = annonceService.getAnnonceById(model.getId_annonce());
-        Optional<Utilisateur> utilisateur = utilisateurService.getUtilisateurById(model.getId_client());
-        Utilisateur annonceur = annonceService.UtilisateurByAnnonceur(annonce.get().getId());
 
-        if (annonce.isPresent() && utilisateur.isPresent()) {
+        Annonce annonce = annonceService.getAnnonceById(model.getId_annonce())
+                .orElseThrow(() -> new NoSuchElementException("Annonce non trouvée avec l'id: " + model.getId_annonce()));
 
-            evaluation.setAnnonce(annonce.get());
-            evaluation.setUtilisateur(utilisateur.get());
-            emailService.SendSimpleMessage(
-                    annonceur.getEmail(),
-                    "Nouveau commentaire sur votre annonce",
-                    "Bonjour,\n\n" +
-                            "Nous vous informons qu'un nouveau commentaire a été laissé sur votre annonce \"" + annonce.get().getTitre() + "\". " +
-                            "Veuillez consulter votre profil pour lire et répondre au commentaire.\n\n" +
-                            "Cordialement,\n" +
-                            "L'équipe de gestion des annonces"
-            );
+        Utilisateur utilisateur = utilisateurService.getUtilisateurById(model.getId_client())
+                .orElseThrow(() -> new NoSuchElementException("Utilisateur non trouvé avec l'id: " + model.getId_client()));
 
-            return evaluationRepositrory.save(evaluation);}
-        else{
-            return null;}
+        Annonceur annonceur = annonceService.UtilisateurByAnnonceur(annonce.getId());
 
+        evaluation.setAnnonce(annonce);
+        evaluation.setUtilisateur(utilisateur);
+
+        List<Reservation> reservationsAnnonce = reservationRepository.findByAnnonceId(annonce.getId());
+        List<Evaluation> evaluationsAnnonce = evaluationRepositrory.findByannonceId(annonce.getId());
+ oclEvaluationValidator.validateBeforeSave(
+    evaluation,
+    annonce,
+    annonceur,
+    reservationsAnnonce,
+    evaluationsAnnonce
+);
+   
+
+
+        emailService.SendSimpleMessage(
+                annonceur.getEmail(),
+                "Nouveau commentaire sur votre annonce",
+                "Bonjour,\n\n" +
+                        "Nous vous informons qu'un nouveau commentaire a été laissé sur votre annonce \"" + annonce.getTitre() + "\". " +
+                        "Veuillez consulter votre profil pour lire et répondre au commentaire.\n\n" +
+                        "Cordialement,\n" +
+                        "L'équipe de gestion des annonces"
+        );
+
+        return evaluationRepositrory.save(evaluation);
     }
 
     @Override
@@ -65,13 +83,15 @@ public class EvaluationServiceImpl implements EvaluationService
 
     @Override
     public Utilisateur ClientByEvaluation(Long id) {
-        Optional<Evaluation> evaluation =  evaluationRepositrory.findById(id);
-        return evaluation.get().getUtilisateur();
+        Evaluation evaluation = evaluationRepositrory.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Evaluation non trouvée avec l'id: " + id));
+        return evaluation.getUtilisateur();
     }
     @Override
     public Annonce AnnonceByEvaluation(Long id) {
-        Optional<Evaluation> evaluation =  evaluationRepositrory.findById(id);
-        return evaluation.get().getAnnonce();
+        Evaluation evaluation = evaluationRepositrory.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Evaluation non trouvée avec l'id: " + id));
+        return evaluation.getAnnonce();
     }
 
     @Override
@@ -105,3 +125,4 @@ public class EvaluationServiceImpl implements EvaluationService
     }
 
 }
+ 
