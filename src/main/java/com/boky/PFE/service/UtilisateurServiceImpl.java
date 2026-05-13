@@ -2,6 +2,7 @@ package com.boky.PFE.service;
 
 import com.boky.PFE.Beans.UtilisateurRequest;
 import com.boky.PFE.entite.ConfirmationToken;
+import com.boky.PFE.entite.TypeUtilisateur;
 import com.boky.PFE.entite.Utilisateur;
 import com.boky.PFE.factory.UtilisateurFactoryProvider;
 import com.boky.PFE.repository.ConfirmationTokenRepository;

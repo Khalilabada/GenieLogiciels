@@ -1,6 +1,7 @@
 package com.boky.PFE.factory;
 
 import com.boky.PFE.entite.Client;
+import com.boky.PFE.entite.TypeUtilisateur;
 import com.boky.PFE.entite.Utilisateur;
 
 public class ClientFactory extends UtilisateurFactory {
@@ -8,6 +9,7 @@ public class ClientFactory extends UtilisateurFactory {
     public Utilisateur creerUtilisateur() {
         Client client = new Client();
         client.setEtat(true);
+        client.setType(TypeUtilisateur.CLIENT);
         return client;
     }
 }

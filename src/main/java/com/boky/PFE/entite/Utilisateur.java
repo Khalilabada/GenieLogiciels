@@ -26,6 +26,9 @@ public abstract class Utilisateur
     private boolean etat;
     private String photo ="assets/img/istockphoto-1209654046-612x612.jpg";
 
+    @Enumerated(EnumType.STRING)
+    private TypeUtilisateur type;
+
 
     @OneToOne(cascade = CascadeType.ALL,fetch = FetchType.EAGER)
     @JoinColumn(name = "code_id")
@@ -117,5 +120,13 @@ public abstract class Utilisateur
 
     public void setPhoto(String photo) {
         this.photo = photo;
+    }
+
+    public TypeUtilisateur getType() {
+        return type;
+    }
+
+    public void setType(TypeUtilisateur type) {
+        this.type = type;
     }
 }

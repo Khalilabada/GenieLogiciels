@@ -1,6 +1,7 @@
 package com.boky.PFE.factory;
 
 import com.boky.PFE.entite.Annonceur;
+import com.boky.PFE.entite.TypeUtilisateur;
 import com.boky.PFE.entite.Utilisateur;
 
 public class AnnonceurFactory extends UtilisateurFactory {
@@ -8,6 +9,7 @@ public class AnnonceurFactory extends UtilisateurFactory {
     public Utilisateur creerUtilisateur() {
         Annonceur annonceur = new Annonceur();
         annonceur.setEtat(true);
+        annonceur.setType(TypeUtilisateur.ANNONCEUR);
         return annonceur;
     }
 }

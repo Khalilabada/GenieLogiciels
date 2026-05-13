@@ -1,8 +1,9 @@
 package com.boky.PFE.Beans;
+import com.boky.PFE.entite.TypeUtilisateur;
 
 public class UtilisateurRequest {
     private Long id;
-    private String type;
+    private TypeUtilisateur type;
     private String nom;
     private String prenom;
     private String email;
@@ -21,11 +22,11 @@ public class UtilisateurRequest {
         this.id = id;
     }
 
-    public String getType() {
+    public TypeUtilisateur getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(TypeUtilisateur type) {
         this.type = type;
     }
 
