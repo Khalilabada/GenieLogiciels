@@ -4,9 +4,9 @@ import com.boky.PFE.Beans.ReservationRQ;
 import com.boky.PFE.entite.Annonce;
 import com.boky.PFE.entite.Reservation;
 import com.boky.PFE.entite.Utilisateur;
-import pattern.observer.AdminObserver;
-import pattern.observer.LogObserver;
 import com.boky.PFE.repository.ReservationRepository;
+import pattern.observer.ReservationObserver;
+import pattern.observer.ReservationSubject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +16,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Service
-public class ReservationServiceImpl implements ReservationService {
+public class ReservationServiceImpl implements ReservationService, ReservationSubject {
     
     @Autowired
     AnnonceService annonceService;
@@ -27,29 +27,30 @@ public class ReservationServiceImpl implements ReservationService {
     @Autowired
     ReservationRepository reservationRepository;
     
-    @Autowired
-    EmailService emailService;
+    private List<ReservationObserver> observers = new ArrayList<>();
     
-    private List<Object> observers = new ArrayList<>();
-    
-    public void attach(Object observer) {
-        observers.add(observer);
-        System.out.println("[Observer] Observateur ajouté: " + observer.getClass().getSimpleName());
+    @Override
+    public void attach(ReservationObserver observer) {
+        if (observer != null && !observers.contains(observer)) {
+            observers.add(observer);
+            System.out.println("[Observer] + Attaché: " + observer.getClass().getSimpleName());
+        }
     }
     
-    public void detach(Object observer) {
+    @Override
+    public void detach(ReservationObserver observer) {
         observers.remove(observer);
-        System.out.println("[Observer] Observateur retiré: " + observer.getClass().getSimpleName());
+        System.out.println("[Observer] - Détaché: " + observer.getClass().getSimpleName());
     }
     
-    public void notifyObservers() {
-        System.out.println("[Observer] Notification de " + observers.size() + " observateur(s)");
-        for (Object observer : observers) {
-            if (observer instanceof AdminObserver) {
-                ((AdminObserver) observer).update();
-            }
-            if (observer instanceof LogObserver) {
-                ((LogObserver) observer).update();
+    @Override
+    public void notifyObservers(Reservation reservation, String evenementType) {
+        System.out.println("[Observer] Notification à " + observers.size() + " observateur(s) - Événement: " + evenementType);
+        for (ReservationObserver observer : observers) {
+            try {
+                observer.update(reservation, evenementType);
+            } catch (Exception e) {
+                System.err.println("[Observer] Erreur dans " + observer.getClass().getSimpleName() + ": " + e.getMessage());
             }
         }
     }
@@ -65,33 +66,17 @@ public class ReservationServiceImpl implements ReservationService {
         if (annonceOpt.isPresent() && utilisateurOpt.isPresent()) {
             Annonce annonce = annonceOpt.get();
             Utilisateur utilisateur = utilisateurOpt.get();
-            Utilisateur annonceur = annonceService.UtilisateurByAnnonceur(annonce.getId());
             
             reservation.setAnnonce(annonce);
             reservation.setUtilisateur(utilisateur);
             
-            // ========== CALCUL AUTOMATIQUE DU PRIX ==========
             int nbNuits = (int) model.getNb_nuit();
             double prixTotal = annonce.calculerPrixTotal(nbNuits);
             reservation.setMontant_paye((long) prixTotal);
             
-            System.out.println("[ReservationService] Calcul du prix: " + nbNuits + " nuits x " + annonce.getPrix() + "€ = " + prixTotal + "€");
-            
-            // Envoi de l'email
-            emailService.SendSimpleMessage(
-                    annonceur.getEmail(),
-                    "Nouvelle réservation pour votre annonce",
-                    "Bonjour,\n\n" +
-                            "Nous vous informons que votre annonce \"" + annonce.getTitre() + "\" a été réservée.\n" +
-                            "Prix total: " + prixTotal + "€\n\n" +
-                            "Veuillez consulter votre profil pour confirmer la réservation.\n\n" +
-                            "Cordialement,\n" +
-                            "L'équipe de gestion des réservations"
-            );
-
             Reservation savedReservation = reservationRepository.save(reservation);
             
-            notifyObservers();
+            notifyObservers(savedReservation, "CREATE");
             
             System.out.println("[ReservationService] Réservation créée avec succès. ID: " + savedReservation.getId());
             return savedReservation;
@@ -114,29 +99,18 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public Utilisateur ClientByReservation(Long id) {
         Optional<Reservation> reservation = reservationRepository.findById(id);
-        if (reservation.isPresent()) {
-            return reservation.get().getUtilisateur();
-        }
-        return null;
+        return reservation.map(Reservation::getUtilisateur).orElse(null);
     }
     
     @Override
     public Annonce AnnonceByReservation(Long id) {
         Optional<Reservation> reservation = reservationRepository.findById(id);
-        if (reservation.isPresent()) {
-            return reservation.get().getAnnonce();
-        }
-        return null;
+        return reservation.map(Reservation::getAnnonce).orElse(null);
     }
 
     @Override
     public Reservation ModifierReservation(Reservation reservation) {
         System.out.println("[ReservationService] Modification de la réservation ID: " + reservation.getId());
-        
-        Utilisateur client = this.ClientByReservation(reservation.getId());
-        Annonce annonce = this.AnnonceByReservation(reservation.getId());
-        reservation.setUtilisateur(client);
-        reservation.setAnnonce(annonce);
         
         Optional<Reservation> reservationOptional = this.getReservationById(reservation.getId());
         if (!reservationOptional.isPresent()) {
@@ -144,21 +118,11 @@ public class ReservationServiceImpl implements ReservationService {
         }
         
         reservation.setEtat(true);
-
-        String etat = reservation.isConfirmation() ? "acceptée" : "non confirmée";
-        emailService.SendSimpleMessage(
-                client.getEmail(),
-                "Réponse concernant votre réservation de maison - " + annonce.getTitre(),
-                "Bonjour,\n\n" +
-                        "Nous vous informons que votre réservation pour la maison \"" + annonce.getTitre() + "\" a été " + etat + ".\n\n" +
-                        "Merci de consulter votre profil pour plus de détails.\n\n" +
-                        "Cordialement,\n" +
-                        "L'équipe de gestion des réservations"
-        );
-
-        Reservation updatedReservation = reservationRepository.save(reservation);
+        String eventType = reservation.isConfirmation() ? "CONFIRM" : "UPDATE";
         
-        System.out.println("[ReservationService] Réservation modifiée avec succès");
+        Reservation updatedReservation = reservationRepository.save(reservation);
+        notifyObservers(updatedReservation, eventType);
+        
         return updatedReservation;
     }
     
@@ -171,10 +135,8 @@ public class ReservationServiceImpl implements ReservationService {
     public List<Reservation> listReservationByAnnonceur(Long idAnnonceur) {
         List<Annonce> annonces = annonceService.listeAnnonceByAnnonceur(idAnnonceur);
         List<Reservation> reservations = new ArrayList<>();
-
         for (Annonce annonce : annonces) {
-            List<Reservation> reservationsAnnonce = reservationRepository.findByAnnonceId(annonce.getId());
-            reservations.addAll(reservationsAnnonce);
+            reservations.addAll(reservationRepository.findByAnnonceId(annonce.getId()));
         }
         return reservations;
     }
@@ -182,7 +144,10 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public void SupprimerReservation(Long id) {
         System.out.println("[ReservationService] Suppression de la réservation ID: " + id);
-        reservationRepository.deleteById(id);
-        System.out.println("[ReservationService] Réservation supprimée avec succès");
+        Optional<Reservation> reservationOpt = getReservationById(id);
+        if (reservationOpt.isPresent()) {
+            reservationRepository.deleteById(id);
+            notifyObservers(reservationOpt.get(), "DELETE");
+        }
     }
 }

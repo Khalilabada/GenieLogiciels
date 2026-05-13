@@ -1,6 +1,5 @@
 package pattern.observer;
 
-
 import com.boky.PFE.entite.Reservation;
 
 public interface ReservationObserver {
